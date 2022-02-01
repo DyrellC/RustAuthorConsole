@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use crate::models::ReadingId;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AlvariumHeader {
@@ -16,12 +17,28 @@ pub struct AlvariumAnnotationPayload {
     pub avl: f64
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AlvariumSignature(String);
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AlvariumAnnotation {
-    pub header : AlvariumHeader,
-    pub payload : AlvariumAnnotationPayload,
-    pub signature : AlvariumSignature
+    pub id: String,
+    pub key: String,
+    pub hash: String,
+    pub host : String,
+    pub kind: String,
+    pub signature : AlvariumSignature,
+    pub isSatisfied: bool,
+    pub timestamp: String,
+}
+
+impl AlvariumAnnotation {
+    pub fn get_reading_id(&self) -> ReadingId {
+        ReadingId(self.key.clone())
+    }
+
+    pub fn get_confidence_score(&self) -> f64 {
+        //TODO: Intercede a calculation process here
+        0_f64
+    }
 }

@@ -3,7 +3,8 @@ use hyper::{service::{make_service_fn, service_fn}, Body, Method, Request, Respo
 use crate::streams::ChannelAuthor;
 use crate::store::{AnnotationStore, ReadingStore};
 
-use std::{net::SocketAddr, sync::{Arc, Mutex}};
+use std::{net::SocketAddr, sync::{Arc}};
+use parking_lot::Mutex;
 use crate::http::*;
 
 static NOTFOUND: &[u8] = b"Not Found";
@@ -62,14 +63,14 @@ async fn responder(
                 readings_response(req, reading_store).await
             }
             (&Method::POST, "/get_annotations") => {
-                annotations_response(req, annotation_store).await
+                annotations_response(req, reading_store, annotation_store).await
             }
             (&Method::POST, "/get_confidence_score") => {
                 confidence_score_response(req, annotation_store).await
             }
-            (&Method::POST, "/get_filtered_annotations") => {
-                filter_annotations_response(req, annotation_store).await
-            }
+            //(&Method::POST, "/get_filtered_annotations") => {
+            //    filter_annotations_response(req, annotation_store).await
+            //}
             _ => {
                 Ok(Response::builder()
                     .status(StatusCode::NOT_FOUND)

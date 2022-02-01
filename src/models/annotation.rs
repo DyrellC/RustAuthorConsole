@@ -1,39 +1,36 @@
-use crate::models::{ReadingId, AlvariumAnnotation};
+use crate::models::AlvariumAnnotation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Annotation {
-    pub reading_id: ReadingId,
-    pub annotation: AlvariumAnnotation,
+    pub action: String,
+    pub content: String,
+    #[serde(rename = "messageType")]
+    pub message_type: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AnnotationList {
+    pub items: Vec<AlvariumAnnotation>
 }
 
 impl Annotation {
-    pub fn new() -> Self {
-        Annotation {
-            reading_id: ReadingId::default(),
-            annotation: AlvariumAnnotation::default(),
+    pub fn get_annotations(&self) -> AnnotationList {
+        let bytes = base64::decode(self.content.clone()).unwrap();
+        let contents: serde_json::Result<AnnotationList> = serde_json::from_slice(&bytes);
+        match contents {
+            Ok(ann_list) => {
+                ann_list
+            },
+            Err(e) => {
+                println!("Error getting annotations: {}", e);
+                AnnotationList { items: Vec::new() }
+            }
         }
     }
 
-    pub fn with_reading_id(mut self, id: ReadingId) -> Self {
-        self.reading_id = id;
-        self
-    }
-
-    pub fn with_annotation(mut self, annotation: AlvariumAnnotation) -> Self {
-        self.annotation = annotation;
-        self
-    }
-
-    pub fn get_reading_id(&self) -> &ReadingId {
-        &self.reading_id
-    }
-
-    pub fn get_annotation(&self) -> &AlvariumAnnotation {
-        &self.annotation
-    }
-
     pub fn get_confidence_score(&self) -> f64 {
-        self.annotation.payload.avl
+        /*self.annotation.payload.avl*/
+        0_f64
     }
 }

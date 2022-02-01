@@ -20,10 +20,12 @@ impl ReadingStoreFilterId {
 
 #[derive(Debug, Deserialize)]
 pub struct AnnotationStoreFilterId {
+    sensor_id: String,
     reading_id: String
 }
 
 impl AnnotationStoreFilterId {
+    pub fn get_sensor_id(&self) -> String { self.sensor_id.clone() }
     pub fn get_reading_id(&self) -> String {
         self.reading_id.clone()
     }
