@@ -28,7 +28,8 @@ pub struct AlvariumAnnotation {
     pub host : String,
     pub kind: String,
     pub signature : AlvariumSignature,
-    pub isSatisfied: bool,
+    #[serde(rename = "isSatisfied")]
+    pub is_satisfied: bool,
     pub timestamp: String,
 }
 

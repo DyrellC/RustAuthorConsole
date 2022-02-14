@@ -2,6 +2,16 @@ use crate::models::SensorId;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReadingWrapper {
+    #[serde(rename = "sensorId")]
+    pub sensor_id: String,
+    #[serde(rename = "readingId")]
+    pub reading_id: String,
+    pub reading: String
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Reading {
     #[serde(rename = "sensorId")]

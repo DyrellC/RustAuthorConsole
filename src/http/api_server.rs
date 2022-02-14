@@ -1,7 +1,6 @@
 use hyper::{service::{make_service_fn, service_fn}, Body, Method, Request, Response, Server, StatusCode};
 
 use crate::streams::ChannelAuthor;
-use crate::store::{AnnotationStore, ReadingStore};
 
 use std::{net::SocketAddr, sync::{Arc}};
 use parking_lot::Mutex;
@@ -13,22 +12,19 @@ type GenericError = Box<dyn std::error::Error + Send + Sync>;
 pub async fn start(
     port: u16,
     author: Arc<Mutex<ChannelAuthor>>,
-    annotation_store: Arc<Mutex<AnnotationStore>>,
-    reading_store: Arc<Mutex<ReadingStore>>
+    sql: mysql::Pool
 ) -> Result<(), GenericError> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     let service = make_service_fn(move |_| {
         let author = author.clone();
-        let annotation_store = annotation_store.clone();
-        let reading_store = reading_store.clone();
+        let sql = sql.clone();
         async {
             Ok::<_, GenericError>(service_fn(move |req| {
                 responder(
                     req,
                     author.clone(),
-                    annotation_store.clone(),
-                    reading_store.clone()
+                    sql.clone()
                 )
             }))
         }
@@ -46,8 +42,7 @@ pub async fn start(
 async fn responder(
     req: Request<Body>,
     author: Arc<Mutex<ChannelAuthor>>,
-    annotation_store: Arc<Mutex<AnnotationStore>>,
-    reading_store: Arc<Mutex<ReadingStore>>,
+    sql: mysql::Pool
 ) -> Result<Response<Body>, GenericError> {
     match req.method() {
         &Method::OPTIONS => preflight_response().await,
@@ -60,17 +55,11 @@ async fn responder(
                 announcement_id_response(author).await
             }
             (&Method::POST, "/get_readings") => {
-                readings_response(req, reading_store).await
+                readings_response(req, sql).await
             }
             (&Method::POST, "/get_annotations") => {
-                annotations_response(req, reading_store, annotation_store).await
+                annotations_response(req, sql).await
             }
-            (&Method::POST, "/get_confidence_score") => {
-                confidence_score_response(req, annotation_store).await
-            }
-            //(&Method::POST, "/get_filtered_annotations") => {
-            //    filter_annotations_response(req, annotation_store).await
-            //}
             _ => {
                 Ok(Response::builder()
                     .status(StatusCode::NOT_FOUND)

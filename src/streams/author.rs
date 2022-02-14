@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::{Read, Write};
 use anyhow::{Result, anyhow};
 use iota_streams::app::transport::{
     tangle::{
@@ -28,25 +30,50 @@ pub struct MessageReturn {
 
 impl ChannelAuthor {
     pub async fn new(seed: &str, node: &str, psk_str: &str) -> Result<ChannelAuthor> {
-
         // Create Client instance
         let client = Client::new_from_url(node);
-
-        // Generate a multi branch Author instance and start the channel
-        let mut author = Author::new(seed, ChannelType::MultiBranch, client);
-        let announcement_id = author.send_announce().await?;
-        println!("Announcement id: {}", announcement_id.to_msg_index());
-
         let psk = psk_from_seed(psk_str.as_bytes());
         let pskid = pskid_from_psk(&psk);
-        author.store_psk(pskid, psk)?;
 
-        Ok(ChannelAuthor {
-            author: author,
-            announcement_id: announcement_id.clone(),
-            channel_address: announcement_id.appinst.clone(),
-            subscriber_key_id: pskid
-        })
+        match std::fs::File::open("author_backup.bin") {
+            Ok(mut backup) => {
+                println!("Creating author from backup...");
+                let mut bytes = Vec::new();
+                backup.read_to_end(&mut bytes)?;
+                let author = Author::import(&bytes, "password", client).await?;
+                let announcement_id = author.announcement_link().unwrap();
+                let channel_address = announcement_id.appinst.clone();
+                println!("Announcement id: {}", announcement_id.to_msg_index());
+
+                Ok(ChannelAuthor { author, announcement_id, channel_address, subscriber_key_id: pskid })
+            }
+            Err(_) => {
+                // Generate a multi branch Author instance and start the channel
+                let mut author = Author::new(seed, ChannelType::MultiBranch, client);
+                let announcement_id = author.send_announce().await?;
+                let channel_address = announcement_id.appinst.clone();
+                println!("Announcement id: {}", announcement_id.to_msg_index());
+
+                author.store_psk(pskid, psk)?;
+
+                println!("Making backup and storing in \"author_backup.bin\"");
+                let backup = author.export("password").await?;
+                println!("Backup length: {}", backup.len());
+                let mut file = File::create("author_backup.bin")?;
+                file.write(backup.as_slice())?;
+
+                Ok(ChannelAuthor { author, announcement_id, channel_address, subscriber_key_id: pskid })
+            }
+        }
+    }
+
+    pub async fn backup(&self) -> Result<()> {
+        println!("Making backup and storing in \"author_backup.bin\"");
+        let backup = self.author.export("password").await?;
+        let mut file = File::create("author_backup.bin")?;
+        file.write(backup.as_slice())?;
+        println!("Backed up...");
+        Ok(())
     }
 
     pub fn get_channel_address(&self) -> Result<String> {
@@ -68,17 +95,9 @@ impl ChannelAuthor {
                     appinst: self.channel_address.clone(),
                     msgid
                 };
-                /*tokio::task::block_in_place(||{
-                    block_on(self.author.receive_subscribe(&address)).unwrap()
-
-                });*/
                 self.author.receive_subscribe(&address).await?;
                 println!("Sending keyload");
                 let identifiers = vec![self.subscriber_key_id.into(), PublicKey::from_bytes(pk).unwrap().into()];
-                /*let keyload = tokio::task::block_in_place(|| {
-                    block_on(
-                        self.author.send_keyload(&self.announcement_id, &identifiers))
-                })?;*/
                 let keyload = self.author.send_keyload(&self.announcement_id, &identifiers).await?;
 
                 // Return the sequence message link
@@ -120,6 +139,9 @@ impl ChannelAuthor {
                         }
                     }
                 }
+                MessageContent::Unreadable => println!("Message is unreadable"),
+                MessageContent::Sequence => println!("Message is a sequence"),
+                MessageContent::Keyload => println!("Message is a keyload"),
                 _ => println!("Message type not supported")
             }
         }

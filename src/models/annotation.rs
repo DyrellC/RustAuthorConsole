@@ -10,6 +10,13 @@ pub struct Annotation {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct AnnotationWrapper {
+    #[serde(rename = "readingId")]
+    pub reading_id: String,
+    pub annotation: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AnnotationList {
     pub items: Vec<AlvariumAnnotation>
 }
