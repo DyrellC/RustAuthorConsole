@@ -3,7 +3,7 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use crate::streams::ChannelAuthor;
 use anyhow::Result;
-use iota_streams::app::futures::executor::block_on;
+use futures::executor::block_on;
 
 pub struct BackupLoop {
     author: Arc<Mutex<ChannelAuthor>>,

@@ -18,6 +18,7 @@ base64 = "0.13.0"
 hex = "0.4.2"
 parking_lot = "0.11.2"
 mysql = "22.0.0"
+futures = "0.3.17"
 
 
 #iota-core = { git = "https://github.com/iotaledger/iota.rs", branch = "iota-1.0" }

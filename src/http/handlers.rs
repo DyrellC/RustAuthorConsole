@@ -3,7 +3,7 @@ use crate::streams::ChannelAuthor;
 use crate::models::{SubscriptionRequest, ReadingWrapper, AnnotationWrapper};
 use std::sync::{Arc};
 use parking_lot::Mutex;
-use iota_streams::app::futures::executor::block_on;
+use futures::executor::block_on;
 use mysql::params;
 use mysql::prelude::Queryable;
 use crate::store::{ReadingStoreFilterId, AnnotationStoreFilterId};

@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
     time::Duration
 };
-use iota_streams::app::futures::executor::block_on;
+use futures::executor::block_on;
 use mysql::params;
 use mysql::prelude::Queryable;
 use parking_lot::Mutex;

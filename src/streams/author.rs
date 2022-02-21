@@ -11,6 +11,7 @@ use iota_streams::app_channels::api::{pskid_from_psk, psk_from_seed, PskId, tang
 use iota_streams::core_edsig::signature::ed25519::PublicKey;
 
 use std::str::FromStr;
+use futures::TryStreamExt;
 use crate::models::{Reading, Annotation, SheetReading};
 
 pub struct ChannelAuthor {
@@ -112,8 +113,8 @@ impl ChannelAuthor {
     pub async fn get_next_msgs(&mut self) -> Result<MessageReturn> {
         let mut found_msgs = MessageReturn::default();
 
-        let response = self.author.fetch_next_msgs().await;
-        for msg in response {
+        let mut msgs = self.author.messages();
+        while let Some(msg) = msgs.try_next().await? {
             match msg.body {
                 MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload: m} => {
                     let reading: serde_json::Result<Reading> = serde_json::from_slice(&m.0);
@@ -139,7 +140,7 @@ impl ChannelAuthor {
                         }
                     }
                 }
-                MessageContent::Unreadable => println!("Message is unreadable"),
+                MessageContent::Unreadable(_) => println!("Message is unreadable"),
                 MessageContent::Sequence => println!("Message is a sequence"),
                 MessageContent::Keyload => println!("Message is a keyload"),
                 _ => println!("Message type not supported")
