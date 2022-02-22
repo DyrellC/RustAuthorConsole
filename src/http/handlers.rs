@@ -2,7 +2,7 @@ use hyper::{Request, Body, Response, StatusCode, header};
 use crate::streams::ChannelAuthor;
 use crate::models::{SubscriptionRequest, ReadingWrapper, AnnotationWrapper};
 use std::sync::{Arc};
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 use futures::executor::block_on;
 use mysql::params;
 use mysql::prelude::Queryable;
@@ -21,6 +21,10 @@ pub async fn preflight_response(
         .unwrap())
 }
 
+/*fn subscribe(author: Arc<Mutex<ChannelAuthor>>, msgid: &str, pk: &Vec<u8>) -> impl Future<Output=anyhow::Result<Address>> {
+    author.lock().subscribe(msgid, pk)
+}*/
+
 pub async fn subscribe_response(
     req: Request<Body>,
     author: Arc<Mutex<ChannelAuthor>>,
@@ -31,10 +35,11 @@ pub async fn subscribe_response(
     let json_data: serde_json::Result<SubscriptionRequest> = serde_json::from_slice(&data);
 
     if let Ok(sub_req) = json_data {
-        let mut author = author.lock();
+        let mut author = author.lock().await;
         let pk = hex::decode(sub_req.pk)?;
         let msgid = sub_req.msgid.clone();
         let keyload = tokio::task::block_in_place(|| {block_on(author.subscribe(&msgid, &pk))});
+        //let keyload = block_on(author.lock().await.subscribe(&msgid, &pk));
         match keyload {
             Ok(keyload_link) => {
                 println!("Processed subscription, returning keyload link...");
@@ -69,7 +74,7 @@ pub async fn channel_address_response(
 ) -> Result<Response<Body>, GenericError> {
     let response;
 
-    let author = author.lock();
+    let author = author.lock().await;
     match author.get_channel_address() {
         Ok(channel_address) => {
             response = Response::builder()
@@ -95,7 +100,7 @@ pub async fn announcement_id_response(
 ) -> Result<Response<Body>, GenericError> {
     let response;
 
-    let author = author.lock();
+    let author = author.lock().await;
     match author.get_announcement_id() {
         Ok(announcement_id) => {
             response = Response::builder()

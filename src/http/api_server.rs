@@ -3,7 +3,7 @@ use hyper::{service::{make_service_fn, service_fn}, Body, Method, Request, Respo
 use crate::streams::ChannelAuthor;
 
 use std::{net::SocketAddr, sync::{Arc}};
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 use crate::http::*;
 
 static NOTFOUND: &[u8] = b"Not Found";

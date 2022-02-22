@@ -7,7 +7,7 @@ use std::{
 use futures::executor::block_on;
 use mysql::params;
 use mysql::prelude::Queryable;
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 
 pub struct MessageRetriever {
     author: Arc<Mutex<ChannelAuthor>>,
@@ -40,7 +40,7 @@ impl MessageRetriever {
 
     async fn handle_messages(&self) {
         //TODO: Handle all panics here
-        let mut author = self.author.lock();
+        let mut author = self.author.lock().await;
         let msgs = tokio::task::block_in_place(|| {block_on(author.get_next_msgs())}).unwrap();
         let mut conn = self.sql.get_conn().unwrap();
 

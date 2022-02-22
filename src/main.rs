@@ -3,7 +3,7 @@ use author_console::streams::{BackupLoop, ChannelAuthor, MessageRetriever};
 use author_console::http::api_server;
 
 use std::sync::{Arc};
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 use std::fs::File;
 use mysql::prelude::Queryable;
 use rand::Rng;
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
     println!("Done.");
 
     let author = Arc::new(Mutex::new(ChannelAuthor::new(seed.as_str(), node, psk).await.unwrap()));
-    let channel_address = author.lock().get_announcement_id().unwrap();
+    let channel_address = author.lock().await.get_announcement_id().unwrap();
 
     println!("\nChannel Address - {}:{}\n", channel_address.0, channel_address.1);
     let retriever = MessageRetriever::new(author.clone(), pool.clone());

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 use crate::streams::ChannelAuthor;
 use anyhow::Result;
 use futures::executor::block_on;
@@ -31,7 +31,7 @@ impl BackupLoop {
 
 
     async fn backup(&self) {
-        let author = self.author.lock();
+        let author = self.author.lock().await;
         tokio::task::block_in_place(|| {block_on(author.backup())}).unwrap();
     }
 }
