@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 tokio = { version = "1.9", features = ["rt", "rt-multi-thread", "time"] }
 anyhow = { version = "1.0.38", default-features = false }
-iota-streams = { git = "https://github.com/iotaledger/streams", branch = "develop", features = ["std", "client", "tangle"] }
+iota-streams = { git = "https://github.com/DyrellC/streams", branch = "local-pow-dev", features = ["std", "client", "tangle"] }
 #iota-streams = { path = "../../products/streams", features = ["std", "client", "tangle"]}
 rand = "0.7.3"
 hyper = {version = "0.14.6", features = ["full"]}
