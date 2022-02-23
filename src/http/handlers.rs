@@ -4,9 +4,7 @@ use crate::models::{SubscriptionRequest, ReadingWrapper, AnnotationWrapper};
 use std::sync::{Arc};
 use tokio::sync::Mutex;
 use futures::executor::block_on;
-use mysql::params;
 use mysql::prelude::Queryable;
-use crate::store::{ReadingStoreFilterId, AnnotationStoreFilterId};
 
 type GenericError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -123,101 +121,75 @@ pub async fn announcement_id_response(
 }
 
 pub async fn readings_response(
-    req: Request<Body>,
-    reading_store: mysql::Pool
+    sql: mysql::Pool
 ) -> Result<Response<Body>, GenericError> {
-    let data = hyper::body::to_bytes(req.into_body()).await?;
-
-    let mut response= Response::builder()
+    let mut response=  Response::builder()
         .status(500)
         .header(header::CONTENT_TYPE, "application/json")
         .header("Access-Control-Allow-Origin", "*")
-        .body(Body::from("Error while reading sensor_id field"))?;
+        .body(Body::from("Error retrieving from sql db"))?;
 
-    let sensor_id: serde_json::Result<ReadingStoreFilterId> = serde_json::from_slice(&data);
-    if let Ok(sensor_id) = sensor_id {
-        match reading_store.get_conn() {
-            Ok(mut conn) => {
-                response = Response::builder()
-                    .status(500)
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header("Access-Control-Allow-Origin", "*")
-                    .body(Body::from("Error retrieving from sql db"))?;
-
-                let mut readings = Vec::new();
-                if let Ok(_) = conn.exec_map("SELECT * FROM molina.readings WHERE sensor_id = :sensor_id",
-                                             params! {"sensor_id" => sensor_id.get_sensor_id()},
-                                             |(sensor_id, reading_id, reading)| {
-                                                 readings.push(ReadingWrapper { sensor_id, reading_id, reading })
-                                             }
-                ) {
-                    if let Ok(_) = conn.exec_map("SELECT * FROM molina.sheet_readings WHERE sheet_id = :sheet_id",
-                                                 params! {"sheet_id" => sensor_id.get_sensor_id()},
-                                                 |(sensor_id, reading_id, reading)| {
-                                                     readings.push(ReadingWrapper { sensor_id, reading_id, reading })
-                                                 }) {
-                        response = Response::builder()
-                            .status(StatusCode::OK)
-                            .header(header::CONTENT_TYPE, "application/json")
-                            .header("Access-Control-Allow-Origin", "*")
-                            .body(Body::from(serde_json::to_string(&readings)?))?;
-                    }
+    match sql.get_conn() {
+        Ok(mut conn) => {
+            let mut readings = Vec::new();
+            if let Ok(_) = conn.query_map("SELECT * FROM molina.readings",
+                                          |(sensor_id, reading_id, reading)| {
+                                              readings.push(ReadingWrapper { sensor_id, reading_id, reading })
+                                          }
+            ) {
+                if let Ok(_) = conn.query_map("SELECT * FROM molina.sheet_readings",
+                                              |(sensor_id, reading_id, reading)| {
+                                                  readings.push(ReadingWrapper { sensor_id, reading_id, reading })
+                                              }) {
+                    response = Response::builder()
+                        .status(StatusCode::OK)
+                        .header(header::CONTENT_TYPE, "application/json")
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(Body::from(serde_json::to_string(&readings)?))?;
                 }
             }
-            Err(_) => {
-                response = Response::builder()
-                    .status(500)
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header("Access-Control-Allow-Origin", "*")
-                    .body(Body::from("Error getting sql connection"))?;
-            }
+        }
+        Err(_) => {
+            response = Response::builder()
+                .status(500)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(Body::from("Error getting sql connection"))?;
         }
     }
     Ok(response)
 }
 
 pub async fn annotations_response(
-    req: Request<Body>,
     sql: mysql::Pool,
 ) -> Result<Response<Body>, GenericError> {
-    let data = hyper::body::to_bytes(req.into_body()).await?;
-
-    let mut response= Response::builder()
+    let mut response = Response::builder()
         .status(500)
         .header(header::CONTENT_TYPE, "application/json")
         .header("Access-Control-Allow-Origin", "*")
-        .body(Body::from("Error while reading reading_id field"))?;
+        .body(Body::from("Error retrieving annotations from sql db"))?;
 
-    let reading_id: serde_json::Result<AnnotationStoreFilterId> = serde_json::from_slice(&data);
-    if let Ok(reading_id) = reading_id {
-        match sql.get_conn() {
-            Ok(mut conn) => {
+    match sql.get_conn() {
+        Ok(mut conn) => {
+            let mut annotations = Vec::new();
+            if let Ok(_) = conn.query_map("SELECT * FROM molina.annotations",
+                                          |(reading_id, annotation)| {
+                                              annotations.push(AnnotationWrapper { reading_id, annotation })
+                                          }
+            ) {
                 response = Response::builder()
-                    .status(500)
+                    .status(StatusCode::OK)
                     .header(header::CONTENT_TYPE, "application/json")
                     .header("Access-Control-Allow-Origin", "*")
-                    .body(Body::from("Error retrieving annotations from sql db"))?;
-
-                let mut annotations = Vec::new();
-                if let Ok(_) = conn.exec_map("SELECT * FROM molina.annotations WHERE reading_id = :reading_id",
-                                             params! {"reading_id" => reading_id.get_reading_id()},
-                                             |(reading_id, annotation)| {
-                                                 annotations.push(AnnotationWrapper { reading_id, annotation })
-                                             }
-                ) {       response = Response::builder()
-                            .status(StatusCode::OK)
-                            .header(header::CONTENT_TYPE, "application/json")
-                            .header("Access-Control-Allow-Origin", "*")
-                            .body(Body::from(serde_json::to_string(&annotations)?))?;
-                    }
+                    .body(Body::from(serde_json::to_string(&annotations)?))?;
             }
-            Err(_) => {
-                response = Response::builder()
-                    .status(500)
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header("Access-Control-Allow-Origin", "*")
-                    .body(Body::from("Error getting sql connection"))?;
-            }
+        }
+        Err(_) => {
+            response = Response::builder()
+                .status(500)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(Body::from("Error getting sql connection"))?;
         }
     }
     Ok(response)

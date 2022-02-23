@@ -54,11 +54,11 @@ async fn responder(
             (&Method::GET, "/get_announcement_id") => {
                 announcement_id_response(author).await
             }
-            (&Method::POST, "/get_readings") => {
-                readings_response(req, sql).await
+            (&Method::GET, "/get_readings") => {
+                readings_response(sql).await
             }
-            (&Method::POST, "/get_annotations") => {
-                annotations_response(req, sql).await
+            (&Method::GET, "/get_annotations") => {
+                annotations_response(sql).await
             }
             _ => {
                 Ok(Response::builder()
