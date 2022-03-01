@@ -60,6 +60,9 @@ async fn responder(
             (&Method::GET, "/get_annotations") => {
                 annotations_response(sql).await
             }
+            (&Method::POST, "/remove") => {
+                removal_response(req, sql).await
+            }
             _ => {
                 Ok(Response::builder()
                     .status(StatusCode::NOT_FOUND)

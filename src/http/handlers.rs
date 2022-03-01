@@ -4,7 +4,9 @@ use crate::models::{SubscriptionRequest, ReadingWrapper, AnnotationWrapper};
 use std::sync::{Arc};
 use tokio::sync::Mutex;
 use futures::executor::block_on;
+use mysql::params;
 use mysql::prelude::Queryable;
+use crate::store::AnnotationStoreFilterId;
 
 type GenericError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -195,6 +197,67 @@ pub async fn annotations_response(
     Ok(response)
 }
 
+pub async fn removal_response(
+    req: Request<Body>,
+    sql: mysql::Pool,
+) -> Result<Response<Body>, GenericError> {
+    let data = hyper::body::to_bytes(req.into_body()).await?;
+
+    let mut response = Response::builder()
+        .status(500)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(Body::from("Error while reading filters fields"))?;
+    let filter: serde_json::Result<AnnotationStoreFilterId> = serde_json::from_slice(&data);
+
+    if let Ok(filter) = filter {
+        response = Response::builder()
+            .status(500)
+            .header(header::CONTENT_TYPE, "application/json")
+            .header("Access-Control-Allow-Origin", "*")
+            .body(Body::from("Error removing readings and annotations from sql db"))?;
+
+        match sql.get_conn() {
+            Ok(mut conn) => {
+                let mut annotations = Vec::new();
+                if let Ok(_) = conn.exec_map("DELETE FROM molina.readings WHERE reading_id = :reading_id",
+                                              params! { "reading_id" => filter.get_reading_id() },
+                                              |(reading_id, annotation)| {
+                                                  annotations.push(AnnotationWrapper { reading_id, annotation })
+                                              }
+                ) {
+                    if let Ok(_) = conn.exec_map("DELETE FROM molina.sheet_readings WHERE reading_id = :reading_id",
+                                                 params! { "reading_id" => filter.get_reading_id() },
+                                                 |(reading_id, annotation)| {
+                                                     annotations.push(AnnotationWrapper { reading_id, annotation })
+                                                 }
+                    ) {
+                        if let Ok(_) = conn.exec_map("DELETE FROM molina.annotations WHERE reading_id = :reading_id",
+                                                     params! { "reading_id" => filter.get_reading_id() },
+                                                     |(reading_id, annotation)| {
+                                                         annotations.push(AnnotationWrapper { reading_id, annotation })
+                                                     }
+                        ) {
+                            response = Response::builder()
+                                .status(StatusCode::OK)
+                                .header(header::CONTENT_TYPE, "application/json")
+                                .header("Access-Control-Allow-Origin", "*")
+                                .body(Body::from("Readings and annotations removed"))?;
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                response = Response::builder()
+                    .status(500)
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(Body::from("Error getting sql connection"))?;
+            }
+        }
+    }
+    Ok(response)
+}
 /*pub async fn filter_annotations_response(
     req: Request<Body>,
     annotation_store: Arc<Mutex<AnnotationStore>>
