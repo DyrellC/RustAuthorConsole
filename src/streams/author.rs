@@ -117,20 +117,33 @@ impl ChannelAuthor {
         while let Some(msg) = msgs.try_next().await? {
             match msg.body {
                 MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload: m} => {
+                    print!("Recieved a signed packet: ");
                     let reading: serde_json::Result<Reading> = serde_json::from_slice(&m.0);
                     match reading {
-                        Ok(r) => found_msgs.readings.push(r),
+                        Ok(r) => {
+                            println!("Got reading: {}", r.sensor_id.0);
+                            found_msgs.readings.push(r)
+                        },
                         Err(_) => {
                             let sheet_reading: serde_json::Result<SheetReading> = serde_json::from_slice(&m.0);
                             match sheet_reading {
-                                Ok(sr) => found_msgs.sheet_readings.push(sr),
+                                Ok(sr) => {
+                                    println!("Got sheet reading: {}", sr.sheet_id.0);
+                                    found_msgs.sheet_readings.push(sr)
+                                },
                                 Err(_) => {
                                     let annotation: serde_json::Result<Annotation> = serde_json::from_slice(&m.0);
                                     match annotation {
-                                        Ok(a) => found_msgs.annotations.push(a),
+                                        Ok(a) => {
+                                            println!("Got annotation: {}", a.action);
+                                            found_msgs.annotations.push(a)
+                                        },
                                         Err(_) => {
                                             match String::from_utf8(m.0) {
-                                                Ok(o) => found_msgs.other.push(o),
+                                                Ok(o) => {
+                                                    println!("Got other: {}", o);
+                                                    found_msgs.other.push(o)
+                                                },
                                                 Err(_) => println!("Error deserializing message")
                                             }
                                         }

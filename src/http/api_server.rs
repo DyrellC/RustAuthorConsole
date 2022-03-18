@@ -3,7 +3,13 @@ use hyper::{service::{make_service_fn, service_fn}, Body, Method, Request, Respo
 use crate::streams::ChannelAuthor;
 
 use std::{net::SocketAddr, sync::{Arc}};
+use std::future::ready;
+use futures::StreamExt;
+use hyper::server::accept;
+use hyper::server::conn::AddrIncoming;
+use tls_listener::TlsListener;
 use tokio::sync::Mutex;
+use tokio_rustls::TlsAcceptor;
 use crate::http::*;
 
 static NOTFOUND: &[u8] = b"Not Found";
@@ -15,7 +21,6 @@ pub async fn start(
     sql: mysql::Pool
 ) -> Result<(), GenericError> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
     let service = make_service_fn(move |_| {
         let author = author.clone();
         let sql = sql.clone();
@@ -30,6 +35,32 @@ pub async fn start(
         }
     });
 
+    /*use tokio_rustls::rustls::{PrivateKey, Certificate, ServerConfig};
+
+    let cert = Certificate(include_bytes!("certs/molina.crt").to_vec());
+    let key = PrivateKey(include_bytes!("certs/newmolina.key").to_vec());
+
+    let tls_acceptor = TlsAcceptor::from(
+        Arc::new(
+            ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_single_cert(vec![cert], key)
+                .unwrap(),
+        )
+    );
+
+    let incoming = TlsListener::new(tls_acceptor, AddrIncoming::bind(&addr)?)
+        .filter(|conn| {
+            if let Err(err) = conn {
+                println!("Error making listener: {}", err);
+                ready(false)
+            } else {
+                ready(true)
+            }
+        });
+
+    let server = Server::builder(accept::from_stream(incoming)).serve(service);*/
     let server = Server::bind(&addr).serve(service);
 
     println!("API listening on http://{}", addr);

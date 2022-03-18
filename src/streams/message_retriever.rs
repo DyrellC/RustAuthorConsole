@@ -77,8 +77,8 @@ impl MessageRetriever {
 
         for annotation in msgs.annotations {
             let ann_type = annotation.action.clone();
+            println!("Storing {} annotation", ann_type);
             for annotation in annotation.get_annotations().items {
-                println!("Storing {} annotation: {}", ann_type, serde_json::to_string(&annotation).unwrap());
                 let reading_id = annotation.get_reading_id().clone();
 
                 conn.exec_drop(r"INSERT INTO molina.annotations (reading_id, annotation)
