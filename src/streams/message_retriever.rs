@@ -45,7 +45,7 @@ impl MessageRetriever {
         let mut conn = self.sql.get_conn().unwrap();
 
         for reading in msgs.readings {
-            println!("Got a new reading message");
+            println!("Storing a new reading message");
             let sensor_id = reading.get_sensor_id().clone();
 
             let reading_id = sha256::digest(&serde_json::to_string(&reading).unwrap());
@@ -60,7 +60,7 @@ impl MessageRetriever {
         }
 
         for sheet_reading in msgs.sheet_readings {
-            println!("Got a new sheet reading message");
+            println!("Storing a new sheet reading message");
             let sheet_id = sheet_reading.sheet_id.clone();
 
             let reading_id = sha256::digest(&serde_json::to_string(&sheet_reading).unwrap());
