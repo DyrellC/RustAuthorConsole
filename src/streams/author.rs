@@ -117,7 +117,7 @@ impl ChannelAuthor {
         while let Some(msg) = msgs.try_next().await? {
             match msg.body {
                 MessageContent::SignedPacket {pk: _, public_payload: _, masked_payload: m} => {
-                    print!("Recieved a signed packet: ");
+                    print!("Recieved a signed packet {}: ", msg.link.msgid);
                     let reading: serde_json::Result<Reading> = serde_json::from_slice(&m.0);
                     match reading {
                         Ok(r) => {
